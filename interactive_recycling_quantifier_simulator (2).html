@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eco-Quantifiers: Interactive Recycling Simulator</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #e0f2fe 0%, #dcfce7 100%);
+      --card-bg: #ffffff;
+      --primary: #059669;
+      --primary-hover: #047857;
+      --blue-bin: #2563eb;
+      --blue-bin-light: #eff6ff;
+      --amber-bin: #d97706;
+      --amber-bin-light: #fffbeb;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-radius: 20px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Chinese toggle helper */
+    body.hide-zh .zh {
+      display: none !important;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1180px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Header & Controls */
+    header {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 16px 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 4px solid #10b981;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 2.2rem;
+      background: #d1fae5;
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #065f46;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-toggle {
+      background: #f1f5f9;
+      border: 2px solid #cbd5e1;
+      color: #334155;
+      padding: 10px 16px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-toggle:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-toggle.active {
+      background: #059669;
+      border-color: #059669;
+      color: white;
+    }
+
+    .mode-switcher {
+      display: flex;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 16px;
+      gap: 4px;
+    }
+
+    .mode-btn {
+      border: none;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      background: transparent;
+      color: #475569;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: #ffffff;
+      color: #059669;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Main Workspace Grid */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .bin-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      border: 3px solid transparent;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .bin-card.countable-card {
+      border-color: #93c5fd;
+    }
+
+    .bin-card.uncountable-card {
+      border-color: #fcd34d;
+    }
+
+    .bin-card.selected-focus {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 30px -10px rgba(0, 0, 0, 0.14);
+    }
+
+    .bin-card.countable-card.selected-focus {
+      border-color: #2563eb;
+      background: linear-gradient(to bottom, #eff6ff 0%, #ffffff 30%);
+    }
+
+    .bin-card.uncountable-card.selected-focus {
+      border-color: #d97706;
+      background: linear-gradient(to bottom, #fffbeb 0%, #ffffff 30%);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .badge-countable {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .badge-uncountable {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .item-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .item-pill {
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      background: #f8fafc;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .countable-card .item-pill.active {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+    }
+
+    .uncountable-card .item-pill.active {
+      background: #d97706;
+      border-color: #d97706;
+      color: white;
+    }
+
+    /* Visual Bin Containers */
+    .visual-stage {
+      height: 230px;
+      border-radius: 18px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 14px;
+      cursor: pointer;
+    }
+
+    .countable-stage {
+      background: #f1f5f9;
+      border: 3px dashed #93c5fd;
+    }
+
+    .uncountable-stage {
+      background: #f8fafc;
+      border: 3px solid #f59e0b;
+      align-items: center;
+    }
+
+    /* Countable Items Grid inside Bin */
+    .items-grid {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-end;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      height: 100%;
+      padding-top: 28px;
+      overflow-y: auto;
+    }
+
+    .item-token {
+      font-size: 2.2rem;
+      background: white;
+      border-radius: 14px;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+
+    .item-token .num-tag {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #2563eb;
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 800;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.3) translateY(-20px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    /* Uncountable Tank Visualization */
+    .tank-container {
+      width: 72%;
+      max-width: 240px;
+      height: 175px;
+      border: 4px solid #78350f;
+      border-top: none;
+      border-radius: 0 0 24px 24px;
+      position: relative;
+      background: rgba(255, 255, 255, 0.85);
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .tank-fill {
+      width: 100%;
+      height: 0%;
+      transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tank-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .tank-markers {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 10px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .marker-line {
+      border-bottom: 1.5px dashed rgba(120, 53, 15, 0.4);
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #78350f;
+      text-align: right;
+    }
+
+    .stage-overlay-badge {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 4px 12px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      z-index: 3;
+    }
+
+    .empty-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-weight: 700;
+      text-align: center;
+      padding: 20px;
+      pointer-events: none;
+    }
+
+    /* Action Buttons */
+    .bin-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+    }
+
+    .action-btn {
+      border: none;
+      padding: 13px 16px;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-add-blue {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-add-amber {
+      background: #d97706;
+      color: white;
+    }
+
+    .btn-remove {
+      background: #f1f5f9;
+      color: #334155;
+      border: 2px solid #cbd5e1;
+    }
+
+    .btn-reset {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 13px 14px;
+    }
+
+    /* Quantifier Meter & Sentence Builder Panel */
+    .grammar-panel {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 22px 26px;
+      box-shadow: var(--shadow);
+      border-top: 5px solid #059669;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .meter-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .meter-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #065f46;
+    }
+
+    .focus-indicator {
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    /* 3-Zone Quantifier Gauge */
+    .quantifier-gauge {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .quantifier-gauge {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .gauge-zone {
+      border-radius: 16px;
+      padding: 14px;
+      border: 3px solid #e2e8f0;
+      background: #f8fafc;
+      text-align: center;
+      transition: all 0.25s ease;
+      opacity: 0.55;
+    }
+
+    .gauge-zone.active-zone {
+      opacity: 1;
+      transform: scale(1.03);
+      box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.25);
+    }
+
+    .gauge-zone.zone-small.active-zone {
+      border-color: #0ea5e9;
+      background: #f0f9ff;
+    }
+
+    .gauge-zone.zone-medium.active-zone {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+
+    .gauge-zone.zone-large.active-zone {
+      border-color: #8b5cf6;
+      background: #f5f3ff;
+    }
+
+    .zone-label {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .zone-word {
+      font-size: 1.55rem;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .zone-rule {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #475569;
+      margin-top: 4px;
+    }
+
+    /* Sentence Output Box */
+    .sentence-box {
+      background: #f8fafc;
+      border: 3px solid #cbd5e1;
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sentence-display {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.4;
+      color: #1e293b;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hl-verb {
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 4px 12px;
+      border-radius: 10px;
+      border-bottom: 3px solid #2563eb;
+    }
+
+    .hl-verb.uncountable-verb {
+      background: #fef3c7;
+      color: #b45309;
+      border-bottom-color: #d97706;
+    }
+
+    .hl-quantifier {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 4px 14px;
+      border-radius: 10px;
+      border-bottom: 3px solid #059669;
+    }
+
+    .hl-noun {
+      text-decoration: underline;
+      text-decoration-color: #94a3b8;
+      text-underline-offset: 6px;
+    }
+
+    .grammar-tip {
+      font-size: 0.95rem;
+      color: #475569;
+      font-weight: 600;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Quiz Mode Panel */
+    .quiz-panel {
+      display: none;
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border-top: 5px solid #8b5cf6;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .quiz-panel.active {
+      display: flex;
+    }
+
+    .quiz-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .score-pill {
+      background: #f3e8ff;
+      color: #6b21a8;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .quiz-stage-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .quiz-stage-wrapper {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .quiz-visual-box {
+      height: 220px;
+      border-radius: 18px;
+      background: #f1f5f9;
+      border: 3px solid #cbd5e1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .quiz-options-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-prompt-sentence {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 14px;
+      border: 2px dashed #94a3b8;
+      text-align: center;
+    }
+
+    .blank-slot {
+      display: inline-block;
+      min-width: 110px;
+      border-bottom: 4px solid #8b5cf6;
+      color: #7c3aed;
+      padding: 0 8px;
+    }
+
+    .choice-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .choice-btn {
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid #cbd5e1;
+      background: white;
+      font-size: 1.15rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .choice-btn:hover:not(:disabled) {
+      border-color: #8b5cf6;
+      background: #f5f3ff;
+    }
+
+    .choice-btn.selected {
+      background: #8b5cf6;
+      color: white;
+      border-color: #7c3aed;
+    }
+
+    .choice-btn.correct {
+      background: #10b981;
+      color: white;
+      border-color: #059669;
+    }
+
+    .choice-btn.wrong {
+      background: #ef4444;
+      color: white;
+      border-color: #dc2626;
+    }
+
+    .feedback-banner {
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+      display: none;
+    }
+
+    .feedback-banner.show {
+      display: block;
+    }
+
+    .feedback-banner.success {
+      background: #dcfce7;
+      color: #166534;
+      border: 2px solid #86efac;
+    }
+
+    .feedback-banner.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #fca5a5;
+    }
+
+    .btn-next-q {
+      background: #7c3aed;
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 14px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      align-self: flex-end;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">♻️</div>
+      <div>
+        <h1>Eco-Quantifiers Simulator <span class="zh" style="font-size: 1.1rem; color:#059669;">回收量詞模擬器</span></h1>
+        <p>Count, compare & master <strong>a few, a little, some, a lot of</strong> <span class="zh">| 學習可數與不可數名詞的量詞運用</span></p>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <button id="toggleZhBtn" class="btn-toggle active" title="Toggle Traditional Chinese hints">
+        <span>中/英 Hints: ON</span>
+      </button>
+
+      <div class="mode-switcher">
+        <button id="exploreModeBtn" class="mode-btn active">
+          🔍 Explore <span class="zh">自由探索</span>
+        </button>
+        <button id="quizModeBtn" class="mode-btn">
+          🎯 Quiz Challenge <span class="zh">挑戰練習</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- EXPLORE MODE VIEW -->
+  <div id="exploreView" style="display: flex; flex-direction: column; gap: 18px;">
+    <div class="workspace">
+      <!-- LEFT BIN: COUNTABLE -->
+      <div id="countableCard" class="bin-card countable-card selected-focus">
+        <div class="card-header">
+          <div>
+            <span class="badge badge-countable">Countable Nouns <span class="zh">可數名詞 (1, 2, 3...)</span></span>
+            <h2 class="card-title">Blue Recycling Bin <span class="zh">藍廢紙/膠樽回收箱</span></h2>
+          </div>
+        </div>
+
+        <div class="item-selector" id="countableSelector"></div>
+
+        <div class="visual-stage countable-stage" id="countableStage" title="Click to add item">
+          <div class="stage-overlay-badge" style="color: #1d4ed8;">
+            Count <span class="zh">數量</span>: <span id="countableCountLabel">2 plastic bottles</span>
+          </div>
+          <div class="items-grid" id="countableGrid"></div>
+          <div class="empty-hint" id="countableEmptyHint" style="display:none;">
+            <span style="font-size: 2rem;">📥</span>
+            <span>Bin is empty! Click "+ Add" below.<br><span class="zh">回收箱是空的！請按下方「+ 加入」</span></span>
+          </div>
+        </div>
+
+        <div class="bin-actions">
+          <button class="action-btn btn-add-blue" id="addCountableBtn">
+            ➕ Add 1 <span class="zh">加入</span>
+          </button>
+          <button class="action-btn btn-remove" id="remCountableBtn">
+            ➖ Remove <span class="zh">減少</span>
+          </button>
+          <button class="action-btn btn-reset" id="resetCountableBtn" title="Clear bin">
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT BIN: UNCOUNTABLE -->
+      <div id="uncountableCard" class="bin-card uncountable-card">
+        <div class="card-header">
+          <div>
+            <span class="badge badge-uncountable">Uncountable Nouns <span class="zh">不可數名詞 (不能逐個數)</span></span>
+            <h2 class="card-title">Bulk / Liquid Tank <span class="zh">散裝/液體回收缸</span></h2>
+          </div>
+        </div>
+
+        <div class="item-selector" id="uncountableSelector"></div>
+
+        <div class="visual-stage uncountable-stage" id="uncountableStage" title="Click to pour/add material">
+          <div class="stage-overlay-badge" style="color: #b45309;">
+            Uncountable <span class="zh">不可數</span> • <span id="uncountableLevelText">Low Level (15%)</span>
+          </div>
+
+          <div class="tank-container">
+            <div class="tank-markers">
+              <div class="marker-line">HIGH (a lot of)</div>
+              <div class="marker-line">MEDIUM (some)</div>
+              <div class="marker-line">LOW (a little)</div>
+            </div>
+            <div class="tank-fill" id="tankFill" style="height: 15%; background-color: #f59e0b;"></div>
+          </div>
+        </div>
+
+        <div class="bin-actions">
+          <button class="action-btn btn-add-amber" id="addUncountableBtn">
+            🫗 Pour / Add <span class="zh">加入</span>
+          </button>
+          <button class="action-btn btn-remove" id="remUncountableBtn">
+            ➖ Drain <span class="zh">減少</span>
+          </button>
+          <button class="action-btn btn-reset" id="resetUncountableBtn" title="Empty tank">
+            🗑️
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL-TIME QUANTIFIER METER & SENTENCE BUILDER -->
+    <section class="grammar-panel">
+      <div class="meter-header">
+        <div class="meter-title">
+          📊 Live Quantifier Meter & Sentence Builder <span class="zh">即時數量標尺與造句器</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="focusBadge" class="focus-indicator" style="background:#dbeafe; color:#1d4ed8;">
+            Active: Countable (可數)
+          </span>
+          <button id="hideAnswerToggle" class="btn-toggle" style="padding: 6px 12px; font-size: 0.85rem;">
+            👁️ Hide Sentence <span class="zh">隱藏句子 (師生問答)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 Zones -->
+      <div class="quantifier-gauge">
+        <div class="gauge-zone zone-small" id="zoneSmall">
+          <div class="zone-label">Small Amount <span class="zh">少量</span></div>
+          <div class="zone-word" id="wordSmall">a few</div>
+          <div class="zone-rule" id="ruleSmall">1 – 3 items (可數 1-3 個)</div>
+        </div>
+        <div class="gauge-zone zone-medium" id="zoneMedium">
+          <div class="zone-label">Medium Amount <span class="zh">中等數量</span></div>
+          <div class="zone-word" id="wordMedium">some</div>
+          <div class="zone-rule" id="ruleMedium">4 – 7 items (可數 4-7 個)</div>
+        </div>
+        <div class="gauge-zone zone-large" id="zoneLarge">
+          <div class="zone-label">Large Amount <span class="zh">大量</span></div>
+          <div class="zone-word" id="wordLarge">a lot of</div>
+          <div class="zone-rule" id="ruleLarge">8+ items (可數 8 個或以上)</div>
+        </div>
+      </div>
+
+      <!-- Generated Sentence -->
+      <div class="sentence-box" id="sentenceBox">
+        <div class="sentence-display" id="sentenceDisplay"></div>
+        <div class="grammar-tip" id="grammarTip"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- QUIZ CHALLENGE VIEW -->
+  <section id="quizView" class="quiz-panel">
+    <div class="quiz-top">
+      <div>
+        <h2 style="font-size:1.35rem; font-weight:800; color:#5b21b6;">
+          🎯 Quantifier Challenge <span class="zh">量詞大挑戰</span>
+        </h2>
+        <p style="color:var(--text-muted); font-size:0.95rem;">
+          Look at the recycling bin. Choose the correct verb and quantifier! <span class="zh">觀察回收箱內的物品數量與可數性，選出正確的動詞與量詞。</span>
+        </p>
+      </div>
+      <div class="score-pill">
+        ⭐ Score <span class="zh">分數</span>: <span id="quizScore">0</span> / <span id="quizTotal">0</span>
+      </div>
+    </div>
+
+    <div class="quiz-stage-wrapper">
+      <!-- Visual representation of question -->
+      <div class="quiz-visual-box" id="quizVisualBox"></div>
+
+      <!-- Question Controls -->
+      <div class="quiz-options-grid">
+        <div class="quiz-prompt-sentence" id="quizPromptSentence">
+          <span class="blank-slot" id="slotVerb">___</span>
+          <span class="blank-slot" id="slotQuant">___</span>
+          <span id="quizNounText">plastic bottles</span> in the bin.
+        </div>
+
+        <div>
+          <div style="font-weight:800; font-size:0.9rem; margin-bottom:6px; color:#475569;">
+            Step 1: Choose Verb <span class="zh">第一步：選擇動詞 (單數/不可數 vs 複數)</span>
+          </div>
+          <div class="choice-row" id="verbChoices">
+            <button class="choice-btn" data-verb="There is">There is</button>
+            <button class="choice-btn" data-verb="There are">There are</button>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight:800; font-size:0.9rem; margin-bottom:6px; color:#475569;">
+            Step 2: Choose Quantifier <span class="zh">第二步：選擇量詞</span>
+          </div>
+          <div class="choice-row" id="quantChoices">
+            <button class="choice-btn" data-quant="a few">a few</button>
+            <button class="choice-btn" data-quant="a little">a little</button>
+            <button class="choice-btn" data-quant="some">some</button>
+            <button class="choice-btn" data-quant="a lot of">a lot of</button>
+          </div>
+        </div>
+
+        <div class="feedback-banner" id="quizFeedback"></div>
+
+        <button class="btn-next-q" id="nextQuestionBtn" style="display:none;">
+          Next Question ➡️ <span class="zh">下一題</span>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // --- DATA DEFINITIONS ---
+  const COUNTABLE_ITEMS = [
+    { id: 'bottles', singular: 'plastic bottle', plural: 'plastic bottles', zh: '膠樽', icon: '🧴' },
+    { id: 'cans', singular: 'aluminum can', plural: 'aluminum cans', zh: '鋁罐', icon: '🥫' },
+    { id: 'boxes', singular: 'cardboard box', plural: 'cardboard boxes', zh: '紙皮箱', icon: '📦' },
+    { id: 'newspapers', singular: 'newspaper', plural: 'newspapers', zh: '報紙', icon: '📰' }
+  ];
+
+  const UNCOUNTABLE_ITEMS = [
+    { id: 'oil', name: 'cooking oil', zh: '廢食油', color: '#f59e0b', icon: '🫗' },
+    { id: 'paper', name: 'shredded paper', zh: '碎紙', color: '#94a3b8', icon: '🗒️' },
+    { id: 'water', name: 'greywater', zh: '回收水', color: '#38bdf8', icon: '💧' },
+    { id: 'ewaste', name: 'scrap metal dust', zh: '金屬碎屑', color: '#64748b', icon: '⚙️' }
+  ];
+
+  // --- STATE ---
+  const state = {
+    activeTab: 'explore', // 'explore' | 'quiz'
+    focusType: 'countable', // 'countable' | 'uncountable'
+    hideSentence: false,
+    countable: {
+      itemIndex: 0,
+      count: 2
+    },
+    uncountable: {
+      itemIndex: 0,
+      percent: 15 // 0 to 100
+    },
+    quiz: {
+      score: 0,
+      total: 0,
+      current: null,
+      selectedVerb: null,
+      selectedQuant: null,
+      answered: false
+    }
+  };
+
+  // --- DOM REFERENCES ---
+  const countableSelector = document.getElementById('countableSelector');
+  const uncountableSelector = document.getElementById('uncountableSelector');
+  const countableGrid = document.getElementById('countableGrid');
+  const countableCountLabel = document.getElementById('countableCountLabel');
+  const countableEmptyHint = document.getElementById('countableEmptyHint');
+  const tankFill = document.getElementById('tankFill');
+  const uncountableLevelText = document.getElementById('uncountableLevelText');
+
+  const countableCard = document.getElementById('countableCard');
+  const uncountableCard = document.getElementById('uncountableCard');
+  const focusBadge = document.getElementById('focusBadge');
+
+  const zoneSmall = document.getElementById('zoneSmall');
+  const zoneMedium = document.getElementById('zoneMedium');
+  const zoneLarge = document.getElementById('zoneLarge');
+  const wordSmall = document.getElementById('wordSmall');
+  const wordMedium = document.getElementById('wordMedium');
+  const wordLarge = document.getElementById('wordLarge');
+  const ruleSmall = document.getElementById('ruleSmall');
+  const ruleMedium = document.getElementById('ruleMedium');
+  const ruleLarge = document.getElementById('ruleLarge');
+
+  const sentenceDisplay = document.getElementById('sentenceDisplay');
+  const grammarTip = document.getElementById('grammarTip');
+
+  // --- INITIALIZATION ---
+  function initSelectors() {
+    countableSelector.innerHTML = COUNTABLE_ITEMS.map((item, idx) => `
+      <button class="item-pill ${idx === state.countable.itemIndex ? 'active' : ''}" data-idx="${idx}">
+        <span>${item.icon}</span>
+        <span>${item.plural} <span class="zh">(${item.zh})</span></span>
+      </button>
+    `).join('');
+
+    countableSelector.querySelectorAll('.item-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.countable.itemIndex = Number(btn.dataset.idx);
+        setFocus('countable');
+        initSelectors();
+        renderExplore();
+      });
+    });
+
+    uncountableSelector.innerHTML = UNCOUNTABLE_ITEMS.map((item, idx) => `
+      <button class="item-pill ${idx === state.uncountable.itemIndex ? 'active' : ''}" data-idx="${idx}">
+        <span>${item.icon}</span>
+        <span>${item.name} <span class="zh">(${item.zh})</span></span>
+      </button>
+    `).join('');
+
+    uncountableSelector.querySelectorAll('.item-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.uncountable.itemIndex = Number(btn.dataset.idx);
+        setFocus('uncountable');
+        initSelectors();
+        renderExplore();
+      });
+    });
+  }
+
+  function setFocus(type) {
+    state.focusType = type;
+    if (type === 'countable') {
+      countableCard.classList.add('selected-focus');
+      uncountableCard.classList.remove('selected-focus');
+      focusBadge.textContent = 'Active: Countable (可數名詞)';
+      focusBadge.style.background = '#dbeafe';
+      focusBadge.style.color = '#1d4ed8';
+    } else {
+      uncountableCard.classList.add('selected-focus');
+      countableCard.classList.remove('selected-focus');
+      focusBadge.textContent = 'Active: Uncountable (不可數名詞)';
+      focusBadge.style.background = '#fef3c7';
+      focusBadge.style.color = '#b45309';
+    }
+    renderExplore();
+  }
+
+  // --- EXPLORE RENDERING ---
+  function renderExplore() {
+    const cItem = COUNTABLE_ITEMS[state.countable.itemIndex];
+    const cCount = state.countable.count;
+
+    // Render Countable Bin
+    countableCountLabel.innerHTML = `${cCount} ${cCount === 1 ? cItem.singular : cItem.plural} <span class="zh">(${cCount} 個${cItem.zh})</span>`;
+    if (cCount === 0) {
+      countableGrid.innerHTML = '';
+      countableEmptyHint.style.display = 'flex';
+    } else {
+      countableEmptyHint.style.display = 'none';
+      let tokensHTML = '';
+      for (let i = 1; i <= cCount; i++) {
+        tokensHTML += `
+          <div class="item-token">
+            <span>${cItem.icon}</span>
+            <span class="num-tag">${i}</span>
+          </div>
+        `;
+      }
+      countableGrid.innerHTML = tokensHTML;
+    }
+
+    // Render Uncountable Tank
+    const uItem = UNCOUNTABLE_ITEMS[state.uncountable.itemIndex];
+    const pct = state.uncountable.percent;
+    tankFill.style.height = `${pct}%`;
+    tankFill.style.backgroundColor = uItem.color;
+
+    let levelDesc = 'Empty (0%)';
+    if (pct > 0 && pct <= 25) levelDesc = `Low Level 少量 (${pct}%)`;
+    else if (pct > 25 && pct <= 65) levelDesc = `Medium Level 中等 (${pct}%)`;
+    else if (pct > 65) levelDesc = `High Level 大量 (${pct}%)`;
+    uncountableLevelText.textContent = levelDesc;
+
+    // Update Meter & Sentence based on active focus
+    zoneSmall.classList.remove('active-zone');
+    zoneMedium.classList.remove('active-zone');
+    zoneLarge.classList.remove('active-zone');
+
+    if (state.focusType === 'countable') {
+      wordSmall.textContent = 'a few';
+      ruleSmall.innerHTML = '1 – 3 items <span class="zh">(可數 1-3 個)</span>';
+      wordMedium.textContent = 'some';
+      ruleMedium.innerHTML = '4 – 7 items <span class="zh">(可數 4-7 個)</span>';
+      wordLarge.textContent = 'a lot of';
+      ruleLarge.innerHTML = '8+ items <span class="zh">(可數 8 個或以上)</span>';
+
+      if (cCount === 0) {
+        renderSentenceOutput(
+          `<span class="hl-verb">There are</span> <span class="hl-quantifier">no</span> <span class="hl-noun">${cItem.plural}</span> in the bin.`,
+          `Zero items! Use <strong>There are no / aren't any</strong> + plural noun. <span class="zh">數量為零時使用 no / aren't any。</span>`
+        );
+      } else if (cCount === 1) {
+        zoneSmall.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb">There is</span> <span class="hl-quantifier">one / a</span> <span class="hl-noun">${cItem.singular}</span> in the bin.`,
+          `Only 1 countable item -> use singular <strong>There is a/one</strong>! (For 2–3 items, we use <strong>There are a few</strong>.) <span class="zh">只有 1 個可數物件時用單數 There is a/one；2至3個則用 There are a few。</span>`
+        );
+      } else if (cCount <= 3) {
+        zoneSmall.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb">There are</span> <span class="hl-quantifier">a few</span> <span class="hl-noun">${cItem.plural}</span> in the bin.`,
+          `<strong>${cItem.plural}</strong> are countable and the amount is small (${cCount}), so we use <strong>There are + a few</strong>! <span class="zh">${cItem.zh}是可數名詞且數量少 (${cCount}個)，所以用 There are a few。</span>`
+        );
+      } else if (cCount <= 7) {
+        zoneMedium.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb">There are</span> <span class="hl-quantifier">some</span> <span class="hl-noun">${cItem.plural}</span> in the bin.`,
+          `Medium amount (${cCount} items) of countable nouns -> use <strong>There are + some</strong>! <span class="zh">中等數量的可數名詞 (${cCount}個)，使用 There are some。</span>`
+        );
+      } else {
+        zoneLarge.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb">There are</span> <span class="hl-quantifier">a lot of</span> <span class="hl-noun">${cItem.plural}</span> in the bin.`,
+          `Large amount (${cCount} items) of countable nouns -> use <strong>There are + a lot of</strong>! <span class="zh">大量可數名詞 (${cCount}個)，使用 There are a lot of。</span>`
+        );
+      }
+    } else {
+      // Uncountable
+      wordSmall.textContent = 'a little';
+      ruleSmall.innerHTML = 'Low level ~10–25% <span class="zh">(不可數 少量)</span>';
+      wordMedium.textContent = 'some';
+      ruleMedium.innerHTML = 'Medium level ~30–65% <span class="zh">(不可數 中等)</span>';
+      wordLarge.textContent = 'a lot of';
+      ruleLarge.innerHTML = 'High level ~70–100% <span class="zh">(不可數 大量)</span>';
+
+      if (pct === 0) {
+        renderSentenceOutput(
+          `<span class="hl-verb uncountable-verb">There is</span> <span class="hl-quantifier">no</span> <span class="hl-noun">${uItem.name}</span> in the tank.`,
+          `Empty tank! Uncountable nouns always take singular <strong>There is</strong>. <span class="zh">不可數名詞永遠配搭單數動詞 There is。</span>`
+        );
+      } else if (pct <= 25) {
+        zoneSmall.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb uncountable-verb">There is</span> <span class="hl-quantifier">a little</span> <span class="hl-noun">${uItem.name}</span> in the tank.`,
+          `<strong>${uItem.name}</strong> is uncountable (cannot count 1, 2, 3) and the amount is small, so we use <strong>There is + a little</strong>! <span class="zh">${uItem.zh}是不可數名詞且份量少，所以用 There is a little。</span>`
+        );
+      } else if (pct <= 65) {
+        zoneMedium.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb uncountable-verb">There is</span> <span class="hl-quantifier">some</span> <span class="hl-noun">${uItem.name}</span> in the tank.`,
+          `Medium amount of uncountable material -> use <strong>There is + some</strong>! Notice <em>some</em> works for both countable and uncountable! <span class="zh">中等份量的不可數物質用 There is some（some 可同時用於可數及不可數名詞）。</span>`
+        );
+      } else {
+        zoneLarge.classList.add('active-zone');
+        renderSentenceOutput(
+          `<span class="hl-verb uncountable-verb">There is</span> <span class="hl-quantifier">a lot of</span> <span class="hl-noun">${uItem.name}</span> in the tank.`,
+          `Large amount of uncountable material -> use <strong>There is + a lot of</strong>! <span class="zh">大量不可數物質使用 There is a lot of。</span>`
+        );
+      }
+    }
+  }
+
+  function renderSentenceOutput(sentenceHTML, tipHTML) {
+    if (state.hideSentence) {
+      sentenceDisplay.innerHTML = `<span style="color:#64748b; font-size:1.35rem;">🙈 Sentence hidden for class discussion! Click "Show Sentence" to reveal. <span class="zh">(句子已隱藏，適合課堂提問)</span></span>`;
+      grammarTip.innerHTML = `Ask students: Is it countable or uncountable? How much is there? <span class="zh">問問學生：這是可數還是不可數？數量有多少？</span>`;
+    } else {
+      sentenceDisplay.innerHTML = sentenceHTML;
+      grammarTip.innerHTML = tipHTML;
+    }
+  }
+
+  // --- EVENT LISTENERS FOR EXPLORE ---
+  countableCard.addEventListener('click', () => setFocus('countable'));
+  uncountableCard.addEventListener('click', () => setFocus('uncountable'));
+
+  document.getElementById('addCountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('countable');
+    if (state.countable.count < 15) {
+      state.countable.count++;
+      renderExplore();
+    }
+  });
+
+  document.getElementById('countableStage').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('countable');
+    if (state.countable.count < 15) {
+      state.countable.count++;
+      renderExplore();
+    }
+  });
+
+  document.getElementById('remCountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('countable');
+    if (state.countable.count > 0) {
+      state.countable.count--;
+      renderExplore();
+    }
+  });
+
+  document.getElementById('resetCountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('countable');
+    state.countable.count = 0;
+    renderExplore();
+  });
+
+  document.getElementById('addUncountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('uncountable');
+    if (state.uncountable.percent < 100) {
+      state.uncountable.percent = Math.min(100, state.uncountable.percent + 15);
+      renderExplore();
+    }
+  });
+
+  document.getElementById('uncountableStage').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('uncountable');
+    if (state.uncountable.percent < 100) {
+      state.uncountable.percent = Math.min(100, state.uncountable.percent + 15);
+      renderExplore();
+    }
+  });
+
+  document.getElementById('remUncountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('uncountable');
+    if (state.uncountable.percent > 0) {
+      state.uncountable.percent = Math.max(0, state.uncountable.percent - 15);
+      renderExplore();
+    }
+  });
+
+  document.getElementById('resetUncountableBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFocus('uncountable');
+    state.uncountable.percent = 0;
+    renderExplore();
+  });
+
+  // Toggle Chinese Hints
+  const toggleZhBtn = document.getElementById('toggleZhBtn');
+  toggleZhBtn.addEventListener('click', () => {
+    document.body.classList.toggle('hide-zh');
+    const isHidden = document.body.classList.contains('hide-zh');
+    toggleZhBtn.classList.toggle('active', !isHidden);
+    toggleZhBtn.innerHTML = isHidden ? '<span>中/英 Hints: OFF</span>' : '<span>中/英 Hints: ON</span>';
+  });
+
+  // Hide Sentence Toggle
+  const hideAnswerToggle = document.getElementById('hideAnswerToggle');
+  hideAnswerToggle.addEventListener('click', () => {
+    state.hideSentence = !state.hideSentence;
+    hideAnswerToggle.classList.toggle('active', state.hideSentence);
+    hideAnswerToggle.innerHTML = state.hideSentence
+      ? '👁️ Show Sentence <span class="zh">顯示句子</span>'
+      : '🙈 Hide Sentence <span class="zh">隱藏句子</span>';
+    renderExplore();
+  });
+
+  // Mode Switching
+  const exploreModeBtn = document.getElementById('exploreModeBtn');
+  const quizModeBtn = document.getElementById('quizModeBtn');
+  const exploreView = document.getElementById('exploreView');
+  const quizView = document.getElementById('quizView');
+
+  exploreModeBtn.addEventListener('click', () => {
+    exploreModeBtn.classList.add('active');
+    quizModeBtn.classList.remove('active');
+    exploreView.style.display = 'flex';
+    quizView.classList.remove('active');
+  });
+
+  quizModeBtn.addEventListener('click', () => {
+    quizModeBtn.classList.add('active');
+    exploreModeBtn.classList.remove('active');
+    exploreView.style.display = 'none';
+    quizView.classList.add('active');
+    if (!state.quiz.current) {
+      generateQuizQuestion();
+    }
+  });
+
+  // --- QUIZ LOGIC ---
+  function generateQuizQuestion() {
+    state.quiz.selectedVerb = null;
+    state.quiz.selectedQuant = null;
+    state.quiz.answered = false;
+
+    document.getElementById('slotVerb').textContent = '___';
+    document.getElementById('slotQuant').textContent = '___';
+    document.getElementById('quizFeedback').className = 'feedback-banner';
+    document.getElementById('quizFeedback').innerHTML = '';
+    document.getElementById('nextQuestionBtn').style.display = 'none';
+
+    document.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.className = 'choice-btn';
+      btn.disabled = false;
+    });
+
+    const isCountable = Math.random() < 0.5;
+    const levels = ['small', 'medium', 'large'];
+    const level = levels[Math.floor(Math.random() * levels.length)];
+
+    const visualBox = document.getElementById('quizVisualBox');
+
+    if (isCountable) {
+      const item = COUNTABLE_ITEMS[Math.floor(Math.random() * COUNTABLE_ITEMS.length)];
+      let count = 2;
+      let correctQuant = 'a few';
+      if (level === 'small') {
+        count = Math.floor(Math.random() * 2) + 2; // 2 or 3
+        correctQuant = 'a few';
+      } else if (level === 'medium') {
+        count = Math.floor(Math.random() * 3) + 5; // 5 to 7
+        correctQuant = 'some';
+      } else {
+        count = Math.floor(Math.random() * 4) + 9; // 9 to 12
+        correctQuant = 'a lot of';
+      }
+
+      state.quiz.current = {
+        isCountable: true,
+        correctVerb: 'There are',
+        correctQuant,
+        nounText: item.plural,
+        zh: item.zh,
+        amountDesc: `${count} ${item.plural}`
+      };
+
+      document.getElementById('quizNounText').innerHTML = `${item.plural} <span class="zh">(${item.zh})</span>`;
+
+      let tokensHTML = '';
+      for (let i = 1; i <= count; i++) {
+        tokensHTML += `<div class="item-token" style="width:44px; height:44px; font-size:1.8rem;">${item.icon}</div>`;
+      }
+      visualBox.innerHTML = `
+        <div class="stage-overlay-badge" style="color:#1d4ed8;">Countable <span class="zh">可數</span> • ${count} items</div>
+        <div class="items-grid" style="padding-top:32px;">${tokensHTML}</div>
+      `;
+    } else {
+      const item = UNCOUNTABLE_ITEMS[Math.floor(Math.random() * UNCOUNTABLE_ITEMS.length)];
+      let pct = 18;
+      let correctQuant = 'a little';
+      let labelZh = '少量';
+      if (level === 'small') {
+        pct = 18;
+        correctQuant = 'a little';
+        labelZh = '少量';
+      } else if (level === 'medium') {
+        pct = 50;
+        correctQuant = 'some';
+        labelZh = '中等份量';
+      } else {
+        pct = 88;
+        correctQuant = 'a lot of';
+        labelZh = '大量';
+      }
+
+      state.quiz.current = {
+        isCountable: false,
+        correctVerb: 'There is',
+        correctQuant,
+        nounText: item.name,
+        zh: item.zh,
+        amountDesc: `${labelZh} (${pct}%)`
+      };
+
+      document.getElementById('quizNounText').innerHTML = `${item.name} <span class="zh">(${item.zh})</span>`;
+
+      visualBox.innerHTML = `
+        <div class="stage-overlay-badge" style="color:#b45309;">Uncountable <span class="zh">不可數</span> • ${pct}%</div>
+        <div class="tank-container" style="height:155px;">
+          <div class="tank-markers">
+            <div class="marker-line">HIGH</div>
+            <div class="marker-line">MEDIUM</div>
+            <div class="marker-line">LOW</div>
+          </div>
+          <div class="tank-fill" style="height:${pct}%; background-color:${item.color};"></div>
+        </div>
+      `;
+    }
+  }
+
+  document.getElementById('verbChoices').addEventListener('click', (e) => {
+    const btn = e.target.closest('.choice-btn');
+    if (!btn || state.quiz.answered) return;
+    state.quiz.selectedVerb = btn.dataset.verb;
+    document.getElementById('slotVerb').textContent = state.quiz.selectedVerb;
+
+    document.querySelectorAll('#verbChoices .choice-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    checkQuizCompletion();
+  });
+
+  document.getElementById('quantChoices').addEventListener('click', (e) => {
+    const btn = e.target.closest('.choice-btn');
+    if (!btn || state.quiz.answered) return;
+    state.quiz.selectedQuant = btn.dataset.quant;
+    document.getElementById('slotQuant').textContent = state.quiz.selectedQuant;
+
+    document.querySelectorAll('#quantChoices .choice-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    checkQuizCompletion();
+  });
+
+  function checkQuizCompletion() {
+    if (!state.quiz.selectedVerb || !state.quiz.selectedQuant || state.quiz.answered) return;
+
+    state.quiz.answered = true;
+    state.quiz.total++;
+
+    const q = state.quiz.current;
+    const isVerbRight = state.quiz.selectedVerb === q.correctVerb;
+    const isQuantRight = state.quiz.selectedQuant === q.correctQuant;
+    const isAllRight = isVerbRight && isQuantRight;
+
+    if (isAllRight) {
+      state.quiz.score++;
+    }
+
+    document.getElementById('quizScore').textContent = state.quiz.score;
+    document.getElementById('quizTotal').textContent = state.quiz.total;
+
+    // Highlight buttons
+    document.querySelectorAll('#verbChoices .choice-btn').forEach(b => {
+      b.disabled = true;
+      if (b.dataset.verb === q.correctVerb) b.classList.add('correct');
+      else if (b.dataset.verb === state.quiz.selectedVerb) b.classList.add('wrong');
+    });
+
+    document.querySelectorAll('#quantChoices .choice-btn').forEach(b => {
+      b.disabled = true;
+      if (b.dataset.quant === q.correctQuant) b.classList.add('correct');
+      else if (b.dataset.quant === state.quiz.selectedQuant) b.classList.add('wrong');
+    });
+
+    const fb = document.getElementById('quizFeedback');
+    const typeText = q.isCountable ? 'countable (可數名詞)' : 'uncountable (不可數名詞)';
+    const explanation = `<strong>${q.nounText}</strong> (${q.zh}) is ${typeText}, and we have <strong>${q.amountDesc}</strong>, so the correct sentence is: <em>"${q.correctVerb} ${q.correctQuant} ${q.nounText} in the bin."</em>`;
+
+    if (isAllRight) {
+      fb.className = 'feedback-banner show success';
+      fb.innerHTML = `🎉 Excellent! <span class="zh">答對了！</span> ${explanation}`;
+    } else {
+      fb.className = 'feedback-banner show error';
+      fb.innerHTML = `💡 Not quite! <span class="zh">再留意一下：</span> ${explanation}`;
+    }
+
+    document.getElementById('nextQuestionBtn').style.display = 'inline-block';
+  }
+
+  document.getElementById('nextQuestionBtn').addEventListener('click', generateQuizQuestion);
+
+  // Boot app
+  initSelectors();
+  renderExplore();
+</script>
+</body>
+</html>
